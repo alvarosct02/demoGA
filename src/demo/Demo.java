@@ -14,6 +14,8 @@ import com.lagodiuk.ga.Fitness;
 import com.lagodiuk.ga.GeneticAlgorithm;
 import com.lagodiuk.ga.IterartionListener;
 import com.lagodiuk.ga.Population;
+import java.awt.Point;
+import java.awt.geom.Point2D;
 
 /**
  *
@@ -21,27 +23,86 @@ import com.lagodiuk.ga.Population;
  */
 public class Demo {
     
-    public static final int NODE_COUNT = 10;
+    public static final int NODE_COUNT = 10;    
+    public static final int MAX_INT = 10000;   
+    public static final int ITERATIONS = 100;
+
+    private static int[][] graph;    
+    private static Point[] points;
+
 
     public static void main(String[] args) {
+        
+        loadGraph();
+        
         Population<MyVector> population = createInitialPopulation(5);
         Fitness<MyVector, Double> fitness = new MyVectorFitness();
         GeneticAlgorithm<MyVector, Double> ga = new GeneticAlgorithm<MyVector, Double>(population, fitness);
         addListener(ga);
-        ga.evolve(500);
+        ga.evolve(ITERATIONS);
     }
+    
+    private static void loadGraph(){
+        points = new Point[]{
+            new Point(0,0),
+            new Point(6,0),
+            new Point(1,4),
+            new Point(2,4),
+            new Point(3,6),
+            new Point(10,1),
+            new Point(6,6),
+            new Point(3,7),
+            new Point(4,10), 
+            new Point(7,10)
+        };
+        
+        graph = new int[NODE_COUNT][NODE_COUNT];
+        for(int i=0;i<NODE_COUNT;i++){
+            for(int j=0;j<NODE_COUNT;j++){                
+                int dist = getDistance(i,j,MAX_INT);
+                graph[i][j] = dist;
+            }
+        }
+        
+        setConnection(1,2);
+        setConnection(1,3);
+        setConnection(2,5);
+        setConnection(5,6);
+        setConnection(6,10);
+        setConnection(5,8);
+        setConnection(8,9);
+        setConnection(9,10);
+        setConnection(3,4);        
+        setConnection(4,5);        
+        setConnection(4,7);
+        setConnection(7,10);        
+    }
+    
+    private static void setConnection(int start, int end){
+//        Because arrays are 0-based
+        start -= 1;        
+        end -= 1;
 
+        int dist = getDistance(start,end,1);
+        graph[start][end] = dist;
+    }
+    
+    private static int getDistance(int start, int end, int factor){
+        Point endPoint = points[end];
+        return ((int) (points[start].distance(endPoint.x, endPoint.y) * 10)) * factor;
+    }
+    
     /**
      * The simplest strategy for creating initial population <br/>
      * in real life it could be more complex
      */
     private static Population<MyVector> createInitialPopulation(int populationSize) {
         Population<MyVector> population = new Population<MyVector>();
-        MyVector base = new MyVector();
+//        MyVector base = new MyVector();
         for (int i = 0; i < populationSize; i++) {
             // each member of initial population
             // is mutated clone of base chromosome
-            MyVector chr = base.mutate();
+            MyVector chr = new MyVector();
             population.addChromosome(chr);
         }
         return population;
@@ -57,7 +118,7 @@ public class Demo {
         // Lets add listener, which prints best chromosome after each iteration
         ga.addIterationListener(new IterartionListener<MyVector, Double>() {
 
-            private final double threshold = 1e-5;
+            private final double threshold = 200;
 
             @Override
             public void update(GeneticAlgorithm<MyVector, Double> ga) {
@@ -76,93 +137,163 @@ public class Demo {
             }
         });
     }
-
-    /**
-     * Chromosome, which represents vector of five integers
-     */
+    
     public static class MyVector implements Chromosome<MyVector>, Cloneable {
 
         private static final Random random = new Random();
 
-        private final int[] vector = new int[10];
+        private final int RANGE = NODE_COUNT - 2;
+        private final int[] vector = new int[]{1,2,3,4,5,6,7,8};
+        public int len;
 
-        /**
-         * Returns clone of current chromosome, which is mutated a bit
-         */
+        public MyVector(){
+            len = RANGE;
+            for(int i = 0; i< 10; i++){
+                randomSwap();
+            }
+        }
+        
+        public void randomSwap(){            
+            int orig = random.nextInt(len);
+            int dest = random.nextInt(RANGE);
+            
+            int temp = vector[orig];
+            vector[orig] = vector[dest];
+            vector[dest] = temp;
+        }
+        
+        
+        private void addLength(int value){
+            int newLen = len + value;
+            if ((newLen > RANGE) || (newLen < 1)){
+                newLen += (value * -2);             
+            }
+            len = newLen;
+        }
+        
+        private void splice(int pos){
+            int temp = vector[pos];
+            for(int i=0; i<vector.length - 1; i++){
+                vector[i] = vector[i+1];
+            }
+            vector[vector.length - 1] = temp;
+        }
+        
         @Override
         public MyVector mutate() {
             MyVector result = this.clone();
-
-            // just select random element of vector
-            // and increase or decrease it on small value
-            int index = random.nextInt(this.vector.length);
-            int mutationValue = random.nextInt(3) - random.nextInt(3);
-            if (mutationValue <= 0) mutationValue += NODE_COUNT;            
-            if (mutationValue > NODE_COUNT) mutationValue -= NODE_COUNT;
-
-            result.vector[index] += mutationValue;
+            
+//            Add or Decrease length
+            int lenToAdd = random.nextInt(2) - random.nextInt(2);
+            result.addLength(lenToAdd);
+            
+//            Splice 1 Gen
+            if (random.nextInt(100) > 50){
+                result.splice(random.nextInt(len));
+            } else{
+                result.insertGen(random.nextInt(len),random.nextInt(RANGE));
+            }
+//            Change a Gen
+            result.randomSwap();            
 
             return result;
         }
 
-        /**
-         * Returns list of siblings <br/>
-         * Siblings are actually new chromosomes, <br/>
-         * created using any of crossover strategy
-         */
+        
         @Override
         public List<MyVector> crossover(MyVector other) {
-            MyVector thisClone = this.clone();
-            MyVector otherClone = other.clone();
+            MyVector clone1 = (this.len <= other.len)? this.clone():other.clone();
+            MyVector clone2 = (this.len <= other.len)? other.clone():this.clone();
+//
+//            // one point crossover
+            int index = random.nextInt(clone1.len);
+            for (int i = index; i < clone2.len; i++) {
+                int tmp = clone1.vector[i];
+            } 
 
-            // one point crossover
-            int index = random.nextInt(this.vector.length - 1);
-            for (int i = index; i < this.vector.length; i++) {
-                int tmp = thisClone.vector[i];
-                thisClone.vector[i] = otherClone.vector[i];
-                otherClone.vector[i] = tmp;
-            }   
-
-            return Arrays.asList(thisClone, otherClone);
+            return Arrays.asList(clone1, clone2);
+        }
+        
+        
+        private void insertGen(int pos, int value){
+            boolean isHere = false;
+            
+            for (int i=0; i< pos; i++){
+                if (vector[i] == value){
+                    isHere = true;
+                    break;
+                }
+            }
+            
+            if (isHere){
+//                Do nothing
+            } else {
+                for (int i=pos; i< vector.length; i++){
+                    if (vector[i] == value){
+                        vector[i] = vector[pos];
+                        break;
+                    }                
+                }
+                vector[pos] = value;
+            }
+            
         }
 
         @Override
         protected MyVector clone() {
             MyVector clone = new MyVector();
+            clone.len = this.len;
             System.arraycopy(this.vector, 0, clone.vector, 0, this.vector.length);
             return clone;
         }
 
-        public int[] getVector() {
-            return this.vector;
+        public int[] getVector(){
+            int[] v = new int[vector.length];
+            for (int i=0; i<len; i++){
+                v[i] = vector[i];
+            }
+            return v;
         }
+        
+        public int[] getVectorString(){
+            int[] v = new int[RANGE+2];
+            v[0] = 1;
+            for (int i=0; i<len; i++){
+                v[i+1] = vector[i] + 1;
+            }
+            v[len+1] = 10;
+            return v;
+        }
+        
+        
 
         @Override
         public String toString() {
-            return Arrays.toString(this.vector);
+            return Arrays.toString(getVectorString());
         }
     }
 
-    /**
-     * Fitness function, which calculates difference between chromosomes vector
-     * and target vector
-     */
     public static class MyVectorFitness implements Fitness<MyVector, Double> {
-
-        private final int[] target = { 10, 20, 30, 40, 50 };
 
         @Override
         public Double calculate(MyVector chromosome) {
-            double delta = 0;
             int[] v = chromosome.getVector();
-            for (int i = 0; i < 5; i++) {
-                delta += this.sqr(v[i] - this.target[i]);
+            
+            int acc = 0; 
+            int lastPoint = 0;            
+            for (int i = 0; i < chromosome.len; i++) { 
+                int newPoint = 0;
+                try{              
+                    newPoint = v[i];   
+                    acc += graph[lastPoint][newPoint];
+                    lastPoint = newPoint; 
+                } catch(Exception e){
+                    System.out.println("lastPoint: " + lastPoint + "  i: " + i);                    
+                }                  
             }
-            return delta;
-        }
-
-        private double sqr(double x) {
-            return x * x;
+            acc += graph[lastPoint][NODE_COUNT-1];
+            
+            return new Double(acc);
         }
     }
 }
