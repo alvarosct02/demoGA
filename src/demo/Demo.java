@@ -33,7 +33,7 @@ public class Demo {
 
     public static void main(String[] args) {
         
-        loadGraph10();
+        loadGraph50();
         
         Population<MyVector> population = createInitialPopulation(5);
         Fitness<MyVector, Double> fitness = new MyVectorFitness();
@@ -247,7 +247,7 @@ public class Demo {
         // Lets add listener, which prints best chromosome after each iteration
         ga.addIterationListener(new IterartionListener<MyVector, Double>() {
 
-            private final double threshold = 200;
+            private final double threshold = 10;
 
             @Override
             public void update(GeneticAlgorithm<MyVector, Double> ga) {
@@ -272,11 +272,15 @@ public class Demo {
         private static final Random random = new Random();
 
         private final int RANGE = NODE_COUNT - 2;
-        private final int[] vector = new int[]{1,2,3,4,5,6,7,8};
+        private final int[] vector = new int[RANGE];
         public int len;
-
+        
         public MyVector(){
-            len = RANGE;
+            len = RANGE;            
+            for(int i = 0; i < vector.length; i++){
+                vector[i] = i;
+            }
+            
             for(int i = 0; i< 10; i++){
                 randomSwap();
             }
@@ -390,7 +394,7 @@ public class Demo {
             for (int i=0; i<len; i++){
                 v[i+1] = vector[i] + 1;
             }
-            v[len+1] = 10;
+            v[len+1] = NODE_COUNT;
             return v;
         }
         
