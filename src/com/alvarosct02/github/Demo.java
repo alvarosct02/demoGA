@@ -37,21 +37,29 @@ public class Demo {
 
         long startTime1 = System.nanoTime();
 
+
+//        Loading the Data
         Demo demo = getInstance();
+//        Loading the Data
+
 
         long endTime1 = System.nanoTime();
         float durationMilis1 = (float) (endTime1 - startTime1) / 1000000;
         System.out.println(String.format("Tiempo de Carga: %.3f miliseconds", durationMilis1));
 
 
+
         long startTime2 = System.nanoTime();
+
+
 //        Running the Algorithm
         try {
             demo.readPackets();
-        } catch (Exception e){
+        } catch (Exception e) {
             System.out.println("An Error has occurred while reading the packets");
             System.out.println(e.getMessage());
         }
+//        Running the Algorithm
 
         long endTime2 = System.nanoTime();
         float durationMilis2 = (float) (endTime2 - startTime2) / 1000000;
@@ -59,6 +67,16 @@ public class Demo {
 
         float durationMilis3 = (float) (endTime2 - startTime1) / 1000000;
         System.out.println(String.format("Tiempo total: %.3f miliseconds", durationMilis3));
+
+
+        int mb = 1024 * 1024;
+
+        //Getting the runtime reference from system
+        Runtime runtime = Runtime.getRuntime();
+
+        System.out.println("Used Memory:"
+                + (runtime.totalMemory() - runtime.freeMemory()) / mb);
+
     }
 
 
@@ -66,9 +84,6 @@ public class Demo {
     public static final int POP_SIZE = 10;
     public static final int ITERATIONS = 50;
 
-
-    //    private int MAX_INT = 1;
-//    private int ITERATIONS = 100;
     private Map<String, Node> nodes;
 
     public Demo() {
